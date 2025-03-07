@@ -1,11 +1,14 @@
 /**
  * TailwindSearchableDropdown.js
  * A lightweight searchable dropdown library using Tailwind CSS
- * Version 1.1.0
+ * Version 1.2.0
  */
 
 (function(global) {
   'use strict';
+  
+  // Store all dropdown instances for later reference
+  const dropdownInstances = [];
   
   /**
    * TailwindSearchableDropdown constructor
@@ -13,14 +16,24 @@
    * @param {Object} options - Configuration options
    */
   function TailwindSearchableDropdown(element, options) {
-    // Normalize element parameter
-    this.element = typeof element === 'string' ? 
-      document.querySelector(element) : element;
-    
-    if (!this.element) {
-      console.error('TailwindSearchableDropdown: No element found');
-      return;
+    // Handle array of elements or selector that matches multiple elements
+    if (typeof element === 'string') {
+      const elements = document.querySelectorAll(element);
+      if (elements.length > 1) {
+        const instances = [];
+        elements.forEach(el => {
+          instances.push(new TailwindSearchableDropdown(el, options));
+        });
+        return instances;
+      } else if (elements.length === 1) {
+        element = elements[0];
+      } else {
+        console.error('TailwindSearchableDropdown: No elements found for selector', element);
+        return null;
+      }
     }
+    
+    this.element = element;
     
     // Base classes that must be included for functionality
     this.baseClasses = {
@@ -56,23 +69,55 @@
       }
     }, options);
     
+    // If the element is a <select>, get options from it
+    if (this.element.tagName === 'SELECT') {
+      this.extractSelectOptions();
+    }
+    
+    // Add this instance to the global instances array
+    dropdownInstances.push(this);
+    
     // Initialize the dropdown
     this.init();
+    
+    return this;
   }
+  
+  // Extract options from a <select> element
+  TailwindSearchableDropdown.prototype.extractSelectOptions = function() {
+    const data = [];
+    const options = this.element.querySelectorAll('option');
+    
+    // Get placeholder from first option if it has no value
+    const firstOption = options[0];
+    if (firstOption && (!firstOption.value || firstOption.value === '')) {
+      this.options.placeholder = firstOption.textContent;
+    }
+    
+    options.forEach(option => {
+      // Skip options with empty value (often used as placeholders)
+      if (option.value) {
+        data.push({
+          value: option.value,
+          label: option.textContent
+        });
+      }
+    });
+    
+    this.options.data = data;
+  };
   
   // Initialize the dropdown
   TailwindSearchableDropdown.prototype.init = function() {
-    // Create container if needed
-    if (!this.element.classList.contains('tsd-container')) {
-      const container = document.createElement('div');
-      container.className = 'tsd-container ' + this.getCombinedClass('container');
-      this.element.parentNode.insertBefore(container, this.element);
-      container.appendChild(this.element);
-      this.container = container;
-    } else {
-      this.container = this.element;
-      this.element = null; // No need to keep reference to original element
-    }
+    // Create container
+    this.container = document.createElement('div');
+    this.container.className = 'tsd-container ' + this.getCombinedClass('container');
+    
+    // Insert container before the original element
+    this.element.parentNode.insertBefore(this.container, this.element);
+    
+    // Hide the original element
+    this.element.style.display = 'none';
     
     // Create the necessary DOM structure
     this.render();
@@ -232,9 +277,9 @@
   // Open the dropdown
   TailwindSearchableDropdown.prototype.open = function() {
     // Close all other dropdowns first
-    document.querySelectorAll('.tsd-dropdown').forEach(dropdown => {
-      if (dropdown !== this.dropdownEl) {
-        dropdown.style.display = 'none';
+    dropdownInstances.forEach(instance => {
+      if (instance !== this && instance.dropdownEl) {
+        instance.close();
       }
     });
     
@@ -246,15 +291,26 @@
   
   // Close the dropdown
   TailwindSearchableDropdown.prototype.close = function() {
-    this.dropdownEl.style.display = 'none';
-    this.searchEl.value = '';
-    this.filterOptions('');
+    if (this.dropdownEl) {
+      this.dropdownEl.style.display = 'none';
+      this.searchEl.value = '';
+      this.filterOptions('');
+    }
   };
   
   // Select an option
   TailwindSearchableDropdown.prototype.select = function(value, label) {
     this.selectedTextEl.textContent = label;
     this.selectedEl.setAttribute('data-value', value);
+    
+    // Update the original select element if it exists
+    if (this.element.tagName === 'SELECT') {
+      this.element.value = value;
+      
+      // Trigger change event on the original select
+      const event = new Event('change', { bubbles: true });
+      this.element.dispatchEvent(event);
+    }
     
     // Update option styling
     const options = this.optionsContainer.querySelectorAll('.tsd-option:not(.tsd-no-results)');
@@ -300,6 +356,18 @@
     
     // Reattach event listeners
     this.addEventListeners();
+  };
+  
+  // Static method to initialize all select elements with a class
+  TailwindSearchableDropdown.init = function(selector, options) {
+    const elements = document.querySelectorAll(selector);
+    const instances = [];
+    
+    elements.forEach(element => {
+      instances.push(new TailwindSearchableDropdown(element, options));
+    });
+    
+    return instances;
   };
   
   // Expose the constructor to window
