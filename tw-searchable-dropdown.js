@@ -22,52 +22,39 @@
       return;
     }
     
+    // Base classes that must be included for functionality
+    this.baseClasses = {
+      container: 'relative',
+      selectedItem: 'flex items-center justify-between cursor-pointer',
+      dropdown: 'absolute z-10',
+      searchInput: 'w-full',
+      optionsContainer: 'overflow-y-auto',
+      option: 'cursor-pointer',
+      selectedOption: 'cursor-pointer',
+      noResults: '',
+      chevronIcon: ''
+    };
+    
     // Default options
-    const defaultOptions = {
+    this.options = Object.assign({
       placeholder: 'Select an option',
       searchPlaceholder: 'Search...',
       noResultsText: 'No results found',
       onChange: null,
       data: [],
-      // Fixed functional classes (these shouldn't be changed)
-      coreClasses: {
-        container: 'relative',
-        selectedItem: 'flex items-center justify-between cursor-pointer focus:outline-none',
-        dropdown: 'absolute z-10',
-        searchInput: 'w-full focus:outline-none',
-        optionsContainer: 'overflow-y-auto',
-        option: 'cursor-pointer',
-        selectedOption: 'cursor-pointer',
-        noResults: '',
-        chevronIcon: ''
-      },
-      // Default visual styling (can be customized)
-      styleClasses: {
+      // Default Tailwind classes
+      classes: {
         container: 'w-full max-w-xs',
-        selectedItem: 'w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500',
+        selectedItem: 'w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500',
         dropdown: 'w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg',
-        searchInput: 'px-3 py-2 text-sm border-b border-gray-300 focus:ring-blue-500 focus:border-blue-500',
+        searchInput: 'px-3 py-2 text-sm border-b border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500',
         optionsContainer: 'max-h-60 py-1',
         option: 'px-3 py-2 text-sm hover:bg-gray-100',
         selectedOption: 'px-3 py-2 text-sm bg-blue-100',
         noResults: 'px-3 py-2 text-sm text-gray-500',
         chevronIcon: 'w-5 h-5 text-gray-400'
       }
-    };
-    
-    // Merge default options with user options
-    this.options = Object.assign({}, defaultOptions, options);
-    
-    // Special handling for classes - merge styleClasses but keep coreClasses intact
-    if (options && options.styleClasses) {
-      this.options.styleClasses = Object.assign({}, defaultOptions.styleClasses, options.styleClasses);
-    }
-    
-    // Combine core classes and style classes
-    this.classes = {};
-    for (const key in this.options.coreClasses) {
-      this.classes[key] = this.options.coreClasses[key] + ' ' + this.options.styleClasses[key];
-    }
+    }, options);
     
     // Initialize the dropdown
     this.init();
@@ -78,7 +65,7 @@
     // Create container if needed
     if (!this.element.classList.contains('tsd-container')) {
       const container = document.createElement('div');
-      container.className = 'tsd-container ' + this.classes.container;
+      container.className = 'tsd-container ' + this.getCombinedClass('container');
       this.element.parentNode.insertBefore(container, this.element);
       container.appendChild(this.element);
       this.container = container;
@@ -94,6 +81,11 @@
     this.addEventListeners();
   };
   
+  // Helper method to combine base classes with custom classes
+  TailwindSearchableDropdown.prototype.getCombinedClass = function(key) {
+    return this.baseClasses[key] + ' ' + this.options.classes[key];
+  };
+  
   // Render the dropdown
   TailwindSearchableDropdown.prototype.render = function() {
     // Clear container first
@@ -101,7 +93,7 @@
     
     // Create selected item display
     this.selectedEl = document.createElement('div');
-    this.selectedEl.className = 'tsd-selected ' + this.classes.selectedItem;
+    this.selectedEl.className = 'tsd-selected ' + this.getCombinedClass('selectedItem');
     
     // Create the selected text span
     this.selectedTextEl = document.createElement('span');
@@ -110,7 +102,7 @@
     
     // Create the chevron icon
     const chevronSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    chevronSvg.setAttribute('class', this.classes.chevronIcon);
+    chevronSvg.setAttribute('class', this.getCombinedClass('chevronIcon'));
     chevronSvg.setAttribute('viewBox', '0 0 20 20');
     chevronSvg.setAttribute('fill', 'currentColor');
     
@@ -125,27 +117,46 @@
     
     // Create dropdown
     this.dropdownEl = document.createElement('div');
-    this.dropdownEl.className = 'tsd-dropdown ' + this.classes.dropdown;
+    this.dropdownEl.className = 'tsd-dropdown ' + this.getCombinedClass('dropdown');
     this.dropdownEl.style.display = 'none';
     this.container.appendChild(this.dropdownEl);
     
     // Create search input
     this.searchEl = document.createElement('input');
     this.searchEl.type = 'text';
-    this.searchEl.className = 'tsd-search ' + this.classes.searchInput;
+    this.searchEl.className = 'tsd-search ' + this.getCombinedClass('searchInput');
     this.searchEl.placeholder = this.options.searchPlaceholder;
     this.dropdownEl.appendChild(this.searchEl);
     
     // Create options container
     this.optionsContainer = document.createElement('div');
-    this.optionsContainer.className = 'tsd-options-container ' + this.classes.optionsContainer;
+    this.optionsContainer.className = 'tsd-options-container ' + this.getCombinedClass('optionsContainer');
     this.dropdownEl.appendChild(this.optionsContainer);
     
     // Populate options
     this.renderOptions();
   };
   
-  // The rest of the methods remain the same...
+  // Render the options
+  TailwindSearchableDropdown.prototype.renderOptions = function() {
+    this.optionsContainer.innerHTML = '';
+    
+    if (this.options.data.length === 0) {
+      const noOption = document.createElement('div');
+      noOption.className = 'tsd-option tsd-no-results ' + this.getCombinedClass('noResults');
+      noOption.textContent = this.options.noResultsText;
+      this.optionsContainer.appendChild(noOption);
+      return;
+    }
+    
+    this.options.data.forEach(item => {
+      const option = document.createElement('div');
+      option.className = 'tsd-option ' + this.getCombinedClass('option');
+      option.setAttribute('data-value', item.value);
+      option.textContent = item.label;
+      this.optionsContainer.appendChild(option);
+    });
+  };
   
   // Filter options based on search term
   TailwindSearchableDropdown.prototype.filterOptions = function(searchTerm) {
@@ -165,7 +176,7 @@
     if (!hasResults) {
       if (!noResults) {
         noResults = document.createElement('div');
-        noResults.className = 'tsd-option tsd-no-results ' + this.classes.noResults;
+        noResults.className = 'tsd-option tsd-no-results ' + this.getCombinedClass('noResults');
         noResults.textContent = this.options.noResultsText;
         this.optionsContainer.appendChild(noResults);
       } else {
@@ -176,28 +187,7 @@
     }
   };
   
-  // Render the options
-  TailwindSearchableDropdown.prototype.renderOptions = function() {
-    this.optionsContainer.innerHTML = '';
-    
-    if (this.options.data.length === 0) {
-      const noOption = document.createElement('div');
-      noOption.className = 'tsd-option tsd-no-results ' + this.classes.noResults;
-      noOption.textContent = this.options.noResultsText;
-      this.optionsContainer.appendChild(noOption);
-      return;
-    }
-    
-    this.options.data.forEach(item => {
-      const option = document.createElement('div');
-      option.className = 'tsd-option ' + this.classes.option;
-      option.setAttribute('data-value', item.value);
-      option.textContent = item.label;
-      this.optionsContainer.appendChild(option);
-    });
-  };
-  
-  // Add event listeners and other methods remain the same...
+  // Add event listeners
   TailwindSearchableDropdown.prototype.addEventListeners = function() {
     // Toggle dropdown when clicking on the selected item
     this.selectedEl.addEventListener('click', e => {
@@ -270,9 +260,9 @@
     const options = this.optionsContainer.querySelectorAll('.tsd-option:not(.tsd-no-results)');
     options.forEach(option => {
       if (option.getAttribute('data-value') === value) {
-        option.className = 'tsd-option tsd-option-selected ' + this.classes.selectedOption;
+        option.className = 'tsd-option tsd-option-selected ' + this.getCombinedClass('selectedOption');
       } else {
-        option.className = 'tsd-option ' + this.classes.option;
+        option.className = 'tsd-option ' + this.getCombinedClass('option');
       }
     });
     
@@ -300,18 +290,16 @@
     return this.selectedTextEl.textContent;
   };
   
-  // Updated method to only change style classes, not core functionality classes
-  TailwindSearchableDropdown.prototype.updateStyles = function(styleOptions) {
-    // Only update the style classes
-    this.options.styleClasses = Object.assign({}, this.options.styleClasses, styleOptions);
-    
-    // Recompute combined classes
-    for (const key in this.options.coreClasses) {
-      this.classes[key] = this.options.coreClasses[key] + ' ' + this.options.styleClasses[key];
-    }
+  // Update styles without losing functionality
+  TailwindSearchableDropdown.prototype.updateStyles = function(styleClasses) {
+    // Update style classes
+    this.options.classes = Object.assign({}, this.options.classes, styleClasses);
     
     // Re-render with new styles
     this.render();
+    
+    // Reattach event listeners
+    this.addEventListeners();
   };
   
   // Expose the constructor to window
