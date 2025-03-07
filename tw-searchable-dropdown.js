@@ -4,51 +4,51 @@ class SearchableDropdown {
         if (!this.select) return;
 
         this.options = options;
-        this.init();
+        this.createDropdown();
     }
 
-    init() {
+    createDropdown() {
         // Hide the original select field
         this.select.style.display = "none";
 
-        // Create wrapper
+        // Create a wrapper div
         const wrapper = document.createElement("div");
-        wrapper.className = `relative w-full ${this.options.wrapperClass || ''}`;
-        
-        // Create input field
+        wrapper.className = `relative w-full ${this.options.wrapperClass || ""}`;
+
+        // Create the search input
         const input = document.createElement("input");
         input.type = "text";
         input.placeholder = this.options.placeholder || "Search...";
-        input.className = `w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${this.options.inputClass || ''}`;
-        
-        // Create dropdown list
+        input.className = `w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 cursor-pointer ${this.options.inputClass || ""}`;
+        input.readOnly = true; // Make input readonly to handle selection
+
+        // Create the dropdown container
         const dropdown = document.createElement("div");
-        dropdown.className = `absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg hidden ${this.options.dropdownClass || ''}`;
-        
-        // Populate dropdown with options
+        dropdown.className = `absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg hidden max-h-60 overflow-auto ${this.options.dropdownClass || ""}`;
+
+        // Populate dropdown with select options
         Array.from(this.select.options).forEach(option => {
             const item = document.createElement("div");
             item.textContent = option.text;
-            item.className = `px-3 py-2 cursor-pointer hover:bg-gray-200 ${this.options.itemClass || ''}`;
+            item.className = `px-3 py-2 cursor-pointer hover:bg-gray-200 ${this.options.itemClass || ""}`;
             item.dataset.value = option.value;
+
+            // Handle option selection
             item.addEventListener("click", () => {
                 input.value = item.textContent;
                 this.select.value = item.dataset.value;
                 dropdown.classList.add("hidden");
             });
+
             dropdown.appendChild(item);
         });
 
-        // Search functionality
-        input.addEventListener("input", () => {
-            const searchText = input.value.toLowerCase();
-            Array.from(dropdown.children).forEach(item => {
-                item.style.display = item.textContent.toLowerCase().includes(searchText) ? "block" : "none";
-            });
-            dropdown.classList.remove("hidden");
+        // Show/hide dropdown on click
+        input.addEventListener("click", () => {
+            dropdown.classList.toggle("hidden");
         });
 
-        // Hide dropdown on outside click
+        // Hide dropdown when clicking outside
         document.addEventListener("click", (e) => {
             if (!wrapper.contains(e.target)) dropdown.classList.add("hidden");
         });
@@ -60,7 +60,7 @@ class SearchableDropdown {
     }
 }
 
-// Usage: Convert a select field by class or ID
+// Usage function
 window.makeSearchable = function(selector, options) {
     new SearchableDropdown(selector, options);
 };
